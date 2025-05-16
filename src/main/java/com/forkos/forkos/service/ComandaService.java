@@ -5,6 +5,8 @@ import com.forkos.forkos.model.ItemComanda; // Importa la entidad ItemComanda
 import com.forkos.forkos.model.Producto; // Importa la entidad Producto (necesaria para agregar items)
 import com.forkos.forkos.model.Mesa; // Importa la entidad Mesa (necesaria para crear comanda)
 import com.forkos.forkos.model.Usuario; // Importa la entidad Usuario (necesaria para crear comanda)
+import com.forkos.forkos.dto.ComandaResponseDTO;
+import com.forkos.forkos.dto.ItemComandaResponseDTO;
 
 import java.util.List; // Importa List
 import java.util.Optional; // Importa Optional
@@ -21,7 +23,7 @@ public interface ComandaService {
      * @param mozoId El ID del mozo (usuario).
      * @return La comanda recién creada.
      */
-    Comanda crearComanda(Long mesaId, Long mozoId);
+    ComandaResponseDTO crearComanda(Long mesaId, Long mozoId);
 
     /**
      * Agrega un ítem (producto con cantidad y notas) a una comanda existente.
@@ -31,26 +33,26 @@ public interface ComandaService {
      * @param notas Notas adicionales para el ítem (ej: "sin cebolla").
      * @return El ítem de comanda recién creado.
      */
-    ItemComanda agregarItemAComanda(Long comandaId, Long productoId, int cantidad, String notas);
+    ItemComandaResponseDTO agregarItemAComanda(Long comandaId, Long productoId, int cantidad, String notas);
 
     /**
      * Obtiene una comanda por su ID, incluyendo sus ítems asociados.
      * @param comandaId El ID de la comanda.
      * @return Un Optional que contiene la comanda si se encuentra.
      */
-    Optional<Comanda> getComandaById(Long comandaId);
+    Optional<ComandaResponseDTO> getComandaById(Long comandaId);
 
     /**
      * Obtiene todas las comandas (quizás solo las abiertas por defecto).
      * @return Lista de comandas.
      */
-    List<Comanda> getAllComandas(); // O tal vez List<Comanda> getComandasAbiertas();
+    List<ComandaResponseDTO> getAllComandas(); // O tal vez List<Comanda> getComandasAbiertas();
 
     /**
      * Obtiene todas las comandas abiertas.
      * @return Lista de comandas abiertas.
      */
-    List<Comanda> getComandasAbiertas();
+    List<ComandaResponseDTO> getComandasAbiertas();
 
 
     /**
@@ -59,14 +61,14 @@ public interface ComandaService {
      * @param nuevoEstado El nuevo estado (ej: "EN_COCINA", "SERVida").
      * @return La comanda actualizada.
      */
-    Comanda updateEstadoComanda(Long comandaId, String nuevoEstado);
+    ComandaResponseDTO updateEstadoComanda(Long comandaId, String nuevoEstado);
 
     /**
      * Cierra una comanda (por ejemplo, al pagarla), calcula el total final y registra la hora de cierre.
      * @param comandaId El ID de la comanda a cerrar.
      * @return La comanda cerrada.
      */
-    Comanda cerrarComanda(Long comandaId);
+    ComandaResponseDTO cerrarComanda(Long comandaId);
 
     /**
      * Elimina un ítem específico de una comanda.

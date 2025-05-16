@@ -32,7 +32,6 @@ public class ItemComanda {
 
     @ManyToOne(fetch = FetchType.LAZY) // Muchos ItemComanda pertenecen a una sola Comanda
     @JoinColumn(name = "comanda_id", nullable = false) // Define la columna de clave foránea hacia 'comandas', no puede ser NULL
-    @JsonIgnore
     private Comanda comanda; // Relación con la entidad Comanda
 
     @ManyToOne(fetch = FetchType.LAZY) // Muchos ItemComanda se refieren a un solo Producto

@@ -1,7 +1,7 @@
 package com.forkos.forkos.controller;
 
-import com.forkos.forkos.model.Comanda; // Importa entidades y DTOs (futuros)
-import com.forkos.forkos.model.ItemComanda;
+import com.forkos.forkos.dto.ComandaResponseDTO;
+import com.forkos.forkos.dto.ItemComandaResponseDTO;
 // Importa el servicio de Comandas
 import com.forkos.forkos.service.ComandaService;
 
@@ -21,11 +21,6 @@ import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 // -------------------------------
-
-
-// --- Clases simples para el cuerpo de las peticiones POST/PUT usando Lombok ---
-// Puestas aquí como clases internas static. Si prefieres ponerlas en el paquete DTO,
-// cópialas, ponlas en archivos separados en com.forkos.forkos.dto/ y asegúrate de importarlas aquí.
 
 // Request para crear una Comanda: espera { "mesaId": ..., "mozoId": ... }
 @Getter
@@ -77,7 +72,7 @@ public class ComandaController {
     @PostMapping
     public ResponseEntity<Object> crearComanda(@RequestBody CrearComandaRequest request) {
         try {
-            Comanda nuevaComanda = comandaService.crearComanda(request.getMesaId(), request.getMozoId());
+            ComandaResponseDTO nuevaComanda = comandaService.crearComanda(request.getMesaId(), request.getMozoId());
             // En caso de éxito, retornamos ResponseEntity<Comanda>
             return ResponseEntity.status(HttpStatus.CREATED).body(nuevaComanda); // 201 Created
         } catch (RuntimeException e) { // Captura excepciones del servicio
@@ -90,10 +85,10 @@ public class ComandaController {
     // POST http://localhost:8080/api/comandas/{comandaId}/items
     // Cuerpo: JSON { "productoId": 3, "cantidad": 2, "notas": "Sin cebolla" }
     @PostMapping("/{comandaId}/items")
-    public ResponseEntity<ItemComanda> agregarItemAComanda(@PathVariable Long comandaId,
+    public ResponseEntity<ItemComandaResponseDTO> agregarItemAComanda(@PathVariable Long comandaId,
                                                            @RequestBody AgregarItemRequest request) {
         try {
-            ItemComanda nuevoItem = comandaService.agregarItemAComanda(
+            ItemComandaResponseDTO nuevoItem = comandaService.agregarItemAComanda(
                     comandaId,
                     request.getProductoId(),
                     request.getCantidad(),
@@ -108,8 +103,8 @@ public class ComandaController {
     // Endpoint para obtener una comanda por su ID (incluyendo sus ítems)
     // GET http://localhost:8080/api/comandas/{comandaId}
     @GetMapping("/{comandaId}")
-    public ResponseEntity<Comanda> getComandaById(@PathVariable Long comandaId) {
-        Optional<Comanda> comandaOpt = comandaService.getComandaById(comandaId);
+    public ResponseEntity<ComandaResponseDTO> getComandaById(@PathVariable Long comandaId) {
+        Optional<ComandaResponseDTO> comandaOpt = comandaService.getComandaById(comandaId);
         if (comandaOpt.isPresent()) {
             return ResponseEntity.ok(comandaOpt.get()); // 200 OK
         } else {
@@ -120,16 +115,16 @@ public class ComandaController {
     // Endpoint para obtener todas las comandas
     // GET http://localhost:8080/api/comandas
     @GetMapping
-    public ResponseEntity<List<Comanda>> getAllComandas() {
-        List<Comanda> comandas = comandaService.getAllComandas();
+    public ResponseEntity<List<ComandaResponseDTO>> getAllComandas() {
+        List<ComandaResponseDTO> comandas = comandaService.getAllComandas();
         return ResponseEntity.ok(comandas); // 200 OK
     }
 
     // Endpoint para obtener solo las comandas abiertas
     // GET http://localhost:8080/api/comandas/open
     @GetMapping("/open")
-    public ResponseEntity<List<Comanda>> getComandasAbiertas() {
-        List<Comanda> comandas = comandaService.getComandasAbiertas();
+    public ResponseEntity<List<ComandaResponseDTO>> getComandasAbiertas() {
+        List<ComandaResponseDTO> comandas = comandaService.getComandasAbiertas();
         return ResponseEntity.ok(comandas); // 200 OK
     }
 
@@ -137,10 +132,10 @@ public class ComandaController {
     // PUT http://localhost:8080/api/comandas/{comandaId}/estado
     // Cuerpo: JSON { "nuevoEstado": "PENDIENTE_PAGO" } (usando los Strings "ABIERTA", "PENDIENTE_PAGO", "CERRADA")
     @PutMapping("/{comandaId}/estado")
-    public ResponseEntity<Comanda> updateEstadoComanda(@PathVariable Long comandaId,
+    public ResponseEntity<ComandaResponseDTO> updateEstadoComanda(@PathVariable Long comandaId,
                                                        @RequestBody UpdateEstadoRequest request) {
         try {
-            Comanda updatedComanda = comandaService.updateEstadoComanda(comandaId, request.getNuevoEstado());
+            ComandaResponseDTO updatedComanda = comandaService.updateEstadoComanda(comandaId, request.getNuevoEstado());
             return ResponseEntity.ok(updatedComanda); // 200 OK
         } catch (RuntimeException e) { // Captura excepciones del servicio (Comanda no encontrada, estado inválido)
             if (e.getMessage().contains("no encontrada")) { // Validación simple basada en mensaje de error
@@ -154,9 +149,9 @@ public class ComandaController {
     // Endpoint para cerrar una comanda (marcar como pagada, calcular total)
     // PUT http://localhost:8080/api/comandas/{comandaId}/cerrar
     @PutMapping("/{comandaId}/cerrar")
-    public ResponseEntity<Comanda> cerrarComanda(@PathVariable Long comandaId) {
+    public ResponseEntity<ComandaResponseDTO> cerrarComanda(@PathVariable Long comandaId) {
         try {
-            Comanda closedComanda = comandaService.cerrarComanda(comandaId);
+            ComandaResponseDTO closedComanda = comandaService.cerrarComanda(comandaId);
             return ResponseEntity.ok(closedComanda); // 200 OK
         } catch (RuntimeException e) { // Captura excepciones del servicio (Comanda no encontrada, estado no permitido para cerrar)
             if (e.getMessage().contains("no encontrada")) {
@@ -199,5 +194,5 @@ public class ComandaController {
         }
     }
 
-    // Puedes añadir más endpoints aquí (ej: obtener comandas por mesa, filtrar por fecha, etc.)
+    // Puedes añadir más endpoints aquí (ej.: obtener comandas por mesa, filtrar por fecha, etc.)
 }

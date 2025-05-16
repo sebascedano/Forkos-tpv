@@ -1,5 +1,7 @@
 package com.forkos.forkos.service.impl;
 
+import com.forkos.forkos.dto.ComandaResponseDTO;
+import com.forkos.forkos.dto.ItemComandaResponseDTO;
 import com.forkos.forkos.model.Comanda; // Importa entidades y repositorios
 import com.forkos.forkos.model.ItemComanda;
 import com.forkos.forkos.model.Mesa;
@@ -22,6 +24,7 @@ import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 // No usaremos Lombok en esta clase de servicio para el ejemplo
 
@@ -49,10 +52,66 @@ public class ComandaServiceImpl implements com.forkos.forkos.service.ComandaServ
         this.productoRepository = productoRepository;
     }
 
+    // --- Métodos de Mapeo (Entidad a DTO) ---
+    // Estos métodos son privados porque son ayudantes internos del servicio
+    private ItemComandaResponseDTO mapItemComandaToDTO(ItemComanda item) {
+        ItemComandaResponseDTO dto = new ItemComandaResponseDTO();
+        dto.setId(item.getId());
+        dto.setCantidad(item.getCantidad());
+        dto.setNotas(item.getNotas());
+        dto.setPrecioUnitario(item.getPrecioUnitario());
+        dto.setEstado(item.getEstado());
+
+        if (item.getProducto() != null) { // Verifica si la relación Producto está cargada
+            dto.setProductoId(item.getProducto().getId());
+            dto.setProductoNombre(item.getProducto().getNombre()); // Asumiendo que Producto tiene getNombre()
+            // Puedes añadir más campos del producto si los necesitas en el DTO y la entidad Producto tiene sus getters
+            // dto.setProductoDescripcion(item.getProducto().getDescripcion()); // Ejemplo
+        }
+        return dto;
+    }
+
+    private ComandaResponseDTO mapComandaToDTO(Comanda comanda) {
+        ComandaResponseDTO dto = new ComandaResponseDTO();
+        dto.setId(comanda.getId());
+        dto.setFechaHoraApertura(comanda.getFechaHoraApertura());
+        dto.setFechaHoraCierre(comanda.getFechaHoraCierre());
+        dto.setEstado(comanda.getEstado());
+        dto.setTotal(comanda.getTotal());
+
+        // Mapear información de Mesa (accede a comanda.getMesa() AQUI, dentro de un método @Transactional si es LAZY)
+        if (comanda.getMesa() != null) { // Verifica si la relación Mesa está cargada
+            dto.setMesaId(comanda.getMesa().getId());
+            dto.setMesaNumero(comanda.getMesa().getNumero()); // Asumiendo que Mesa tiene getNumero()
+            // Puedes añadir más campos de Mesa si los necesitas
+        }
+
+        // Mapear información de Usuario (Mozo) (accede a comanda.getMozo() AQUI, dentro de un método @Transactional si es LAZY)
+        if (comanda.getMozo() != null) { // Verifica si la relación Usuario está cargada
+            dto.setMozoId(comanda.getMozo().getId());
+            dto.setMozoNombre(comanda.getMozo().getNombre()); // Asumiendo que Usuario tiene getNombre()
+            // Puedes añadir más campos de Usuario si los necesitas
+        }
+
+        // Mapear la lista de ítems (accede a comanda.getItems() AQUI, dentro de un método @Transactional si es LAZY)
+        if (comanda.getItems() != null) { // Verifica si la lista de ítems está cargada
+            // Usa stream() y map() para convertir cada ItemComanda en la lista a un ItemComandaResponseDTO
+            dto.setItems(comanda.getItems().stream()
+                    .map(this::mapItemComandaToDTO) // Llama al método de mapeo de ItemComanda para cada item
+                    .collect(Collectors.toList())); // Recolecta los resultados en una nueva lista de DTOs
+        } else {
+            // Si la lista de items en la entidad es null (lo cual no debería pasar si la inicializas), asegúrate de que la lista en el DTO no sea null.
+            dto.setItems(new java.util.ArrayList<>());
+        }
+
+        return dto; // Retorna el DTO de Comanda
+    }
+    // --- Fin de los Métodos de Mapeo ---
+
     // Implementación de crearComanda(...)
     @Override
     @Transactional // Asegura que la operación sea atómica
-    public Comanda crearComanda(Long mesaId, Long mozoId) {
+    public ComandaResponseDTO crearComanda(Long mesaId, Long mozoId) {
         Optional<Mesa> mesaOpt = mesaRepository.findById(mesaId);
         Optional<Usuario> mozoOpt = userRepository.findById(mozoId);
 
@@ -63,23 +122,29 @@ public class ComandaServiceImpl implements com.forkos.forkos.service.ComandaServ
             throw new RuntimeException("Usuario (Mozo) con ID " + mozoId + " no encontrado");
         }
 
-        Comanda nuevaComanda = new Comanda();
-        nuevaComanda.setMesa(mesaOpt.get());
-        nuevaComanda.setMozo(mozoOpt.get());
-        nuevaComanda.setFechaHoraApertura(LocalDateTime.now());
-        nuevaComanda.setEstado("ABIERTA"); // Usando String para el estado
-        nuevaComanda.setTotal(BigDecimal.ZERO); // Inicializar total
+        Mesa mesa = mesaOpt.get();
+        Usuario mozo=mozoOpt.get();
 
+        Comanda nuevaComanda = new Comanda();
+        nuevaComanda.setMesa(mesa);
+        nuevaComanda.setMozo(mozo);
+        nuevaComanda.setFechaHoraApertura(LocalDateTime.now());
+        nuevaComanda.setEstado("ABIERTA");
+        nuevaComanda.setTotal(BigDecimal.ZERO);
+        nuevaComanda.setItems(new java.util.ArrayList<>()); // Inicializa la lista de ítems
+
+        //Guarda la nueva comanda
+        Comanda savedComanda=comandaRepository.save(nuevaComanda);
         // La lista de items se inicializará por defecto (usualmente a null o lista vacía por Lombok/JPA)
         // Si usas Lombok @AllArgsConstructor, asegúrate que pueda manejar la inicialización de listas o usa @Builder
 
-        return comandaRepository.save(nuevaComanda);
+        return mapComandaToDTO(savedComanda);
     }
 
     // Implementación de agregarItemAComanda(...)
     @Override
     @Transactional
-    public ItemComanda agregarItemAComanda(Long comandaId, Long productoId, int cantidad, String notas) {
+    public ItemComandaResponseDTO agregarItemAComanda(Long comandaId, Long productoId, int cantidad, String notas) {
         Optional<Comanda> comandaOpt = comandaRepository.findById(comandaId);
         Optional<Producto> productoOpt = productoRepository.findById(productoId);
 
@@ -96,13 +161,13 @@ public class ComandaServiceImpl implements com.forkos.forkos.service.ComandaServ
         Comanda comanda = comandaOpt.get();
         Producto producto = productoOpt.get();
 
-        // Validar que la comanda esté en un estado que permita añadir items (ej: ABIERTA)
+        // Validar que la comanda esté ABIERTA
         if (!"ABIERTA".equals(comanda.getEstado())) {
             throw new RuntimeException("No se pueden añadir items a una comanda que no está ABIERTA.");
         }
 
         ItemComanda nuevoItem = new ItemComanda();
-        nuevoItem.setComanda(comanda); // Establece la relación bidireccional
+        nuevoItem.setComanda(comanda); // Establece la relación con comanda
         nuevoItem.setProducto(producto);
         nuevoItem.setCantidad(cantidad);
         nuevoItem.setPrecioUnitario(BigDecimal.valueOf(producto.getPrecio())); // Precio al momento de añadir
@@ -119,15 +184,29 @@ public class ComandaServiceImpl implements com.forkos.forkos.service.ComandaServ
         // Guardar el nuevo ítem. Spring Data JPA debería gestionar la relación.
         ItemComanda savedItem = itemComandaRepository.save(nuevoItem);
 
-        // Recalcular y guardar el total de la comanda después de añadir el item (opcional, podrías hacerlo al cerrar)
-        // Pero es mejor actualizar el total aquí para tenerlo siempre al día
-        BigDecimal totalActualizado = calcularTotalComanda(comanda); // Llama a un método auxiliar
+        // Recalcular y guardar el total de la comanda después de añadir el item
+        BigDecimal totalActualizado = calcularTotalComanda(comanda);
         comanda.setTotal(totalActualizado);
-        comandaRepository.save(comanda); // Guarda la comanda con el total actualizado
+        Comanda updatedComanda = comandaRepository.save(comanda);// Guarda la comanda con el total actualizado
 
-        // Opcional (para fases futuras): Descontar stock de ingredientes si aplica
+        // === Importante: Si necesitas el ID correcto del ItemComanda recién añadido en el DTO retornado ===
+        // La forma más segura de obtener el ItemComanda persistido después de guardar la Comanda.
+        // Busca el item en la lista actualizada de la Comanda persistida
+        ItemComanda persistedItem = updatedComanda.getItems().stream()
+                .filter(item ->
+                                // Criterios para encontrar el item que acabas de añadir. El producto y la cantidad son buenos identificadores.
+                                item.getProducto() != null && item.getProducto().getId().equals(productoId) && item.getCantidad().equals(cantidad)
+                                        // Puedes añadir otros criterios si es posible que haya ítems con el mismo producto/cantidad
+                                        && (item.getNotas() == null ? notas == null : item.getNotas().equals(notas))
+                        // Si tienes tiempo o fecha de creación del item, sería el mejor criterio.
+                )
+                .findFirst()
+                // Si no lo encuentras (muy raro si la cascada funciona), lanza un error interno.
+                .orElseThrow(() -> new RuntimeException("Error interno: No se encontró el item recién añadido después de guardar la comanda."));
 
-        return savedItem;
+
+        // Llama al método de mapeo para convertir el ítem persistido (con ID) a su DTO.
+        return mapItemComandaToDTO(persistedItem); // Llama al método de mapeo con el ítem persistido
     }
 
     // Método auxiliar para calcular el total de una comanda
@@ -150,7 +229,7 @@ public class ComandaServiceImpl implements com.forkos.forkos.service.ComandaServ
     // Implementación de getComandaById(...)
     @Override
     @Transactional(readOnly = true)
-    public Optional<Comanda> getComandaById(Long comandaId) {
+    public Optional<ComandaResponseDTO> getComandaById(Long comandaId) {
         Optional<Comanda> comandaOpt = comandaRepository.findById(comandaId);
         // Si la comanda existe y los items son LAZY, acceder a ellos aquí para forzar la carga dentro de la transacción
         comandaOpt.ifPresent(comanda -> {
@@ -158,74 +237,69 @@ public class ComandaServiceImpl implements com.forkos.forkos.service.ComandaServ
                 comanda.getItems().size(); // Fuerza la inicialización de la colección LAZY
             }
         });
-        return comandaOpt;
+        return comandaOpt.map(this::mapComandaToDTO);
     }
 
     // Implementación de getAllComandas()
     @Override
     @Transactional(readOnly = true)
-    public List<Comanda> getAllComandas() {
-        return comandaRepository.findAll();
+    public List<ComandaResponseDTO> getAllComandas() {
+        List<Comanda> comandas=comandaRepository.findAll();
+        return comandas.stream()
+                .map(this::mapComandaToDTO) // Mapea cada Comanda a su DTO
+                .collect(Collectors.toList()); // Recolecta en una nueva lista de DTOs
     }
 
     // Implementación de getComandasAbiertas()
     @Override
     @Transactional(readOnly = true)
-    public List<Comanda> getComandasAbiertas() {
-        // Usa el método del repositorio para encontrar por estado String
-        return comandaRepository.findByEstado("ABIERTA"); // Usando String "ABIERTA"
+    public List<ComandaResponseDTO> getComandasAbiertas() {
+        List<Comanda> comandas=comandaRepository.findByEstado("ABIERTA");// Usando String "ABIERTA"
+        return comandas.stream().map(this::mapComandaToDTO).collect(Collectors.toList());
     }
 
 
     // Implementación de updateEstadoComanda(...)
     @Override
-    @Transactional
-    public Comanda updateEstadoComanda(Long comandaId, String nuevoEstado) { // Recibe el estado como String
+    @Transactional // Mantén Transactional
+    public ComandaResponseDTO updateEstadoComanda(Long comandaId, String nuevoEstado) { // Cambia tipo de retorno a DTO
+        // ... (Tu lógica existente para encontrar la comanda y validar el estado) ...
         Optional<Comanda> comandaOpt = comandaRepository.findById(comandaId);
         if (!comandaOpt.isPresent()) {
             throw new RuntimeException("Comanda con ID " + comandaId + " no encontrada");
         }
-
         Comanda comanda = comandaOpt.get();
+        // ... (Validación del estado, ej: si es un estado válido en tu lógica) ...
 
-        // Aquí iría la lógica de validación de transiciones de estado si es necesario
-        // ej: if ("CERRADA".equals(comanda.getEstado())) { throw new RuntimeException("No se puede cambiar el estado de una comanda cerrada"); }
-        // Y verificar si el nuevoEstadoString es un estado válido (ej: "ABIERTA", "PENDIENTE_PAGO", "CERRADA")
-        // Una forma simple de validar si te saltaste el Enum:
-        List<String> estadosValidos = java.util.Arrays.asList("ABIERTA", "PENDIENTE_PAGO", "CERRADA"); // Añade CANCELADA si aplica
-        if (!estadosValidos.contains(nuevoEstado)) {
-            throw new RuntimeException("Estado '" + nuevoEstado + "' no es un estado de comanda válido.");
-        }
+        comanda.setEstado(nuevoEstado);
+        // Guarda la comanda actualizada
+        Comanda updatedComanda = comandaRepository.save(comanda);
 
-
-        comanda.setEstado(nuevoEstado); // Establece el estado usando el String
-        return comandaRepository.save(comanda); // Guarda la comanda actualizada
+        // --- === Mapear la entidad guardada a DTO === ---
+        // Llama al método de mapeo AQUI, dentro del método @Transactional.
+        return mapComandaToDTO(updatedComanda); // Llama al método de mapeo
+        // --- Fin del mapeo ---
     }
 
     // Implementación de cerrarComanda(...) - Transición final a CERRADA
     @Override
-    @Transactional
-    public Comanda cerrarComanda(Long comandaId) {
+    @Transactional // Mantén Transactional
+    public ComandaResponseDTO cerrarComanda(Long comandaId) {
         Optional<Comanda> comandaOpt = comandaRepository.findById(comandaId);
         if (!comandaOpt.isPresent()) {
             throw new RuntimeException("Comanda con ID " + comandaId + " no encontrada");
         }
-
         Comanda comanda = comandaOpt.get();
 
-        // Opcional: Validar que la comanda esté en un estado previo que permita cerrarse (ej: PENDIENTE_PAGO o SERVIDA si usas ese estado)
-        // if (!"PENDIENTE_PAGO".equals(comanda.getEstado())) {
-        //      throw new RuntimeException("La comanda " + comandaId + " no está en estado PENDIENTE_PAGO para cerrarse.");
-        // }
+        comanda.setEstado("CERRADA"); // O el nombre del estado CERRADA
+        comanda.setFechaHoraCierre(LocalDateTime.now());
 
-        // Calcular el total (ya tenemos el método auxiliar)
-        BigDecimal totalCalculado = calcularTotalComanda(comanda);
+        // Guarda la comanda cerrada
+        Comanda closedComanda = comandaRepository.save(comanda);
 
-        comanda.setFechaHoraCierre(LocalDateTime.now()); // Registrar hora de cierre
-        comanda.setEstado("CERRADA"); // Establecer estado final CERRADA
-        comanda.setTotal(totalCalculado); // Establecer el total calculado
-
-        return comandaRepository.save(comanda); // Guardar los cambios
+        // --- === Mapear la entidad guardada a DTO === ---
+        // Llama al método de mapeo AQUI, dentro del método @Transactional.
+        return mapComandaToDTO(closedComanda); // Llama al método de mapeo
     }
 
     // Implementación de eliminarItemComanda(...)
@@ -240,7 +314,7 @@ public class ComandaServiceImpl implements com.forkos.forkos.service.ComandaServ
         ItemComanda item = itemOpt.get();
         Comanda comanda = item.getComanda(); // Obtiene la comanda a la que pertenece
 
-        itemComandaRepository.deleteById(itemId); // Elimina el item
+        boolean removed = comanda.getItems().remove(item); // Elimina el item de la lista
 
         // Opcional: Recalcular el total de la comanda después de eliminar un item
         // Esto es importante si quieres que el total se actualice inmediatamente
@@ -264,5 +338,4 @@ public class ComandaServiceImpl implements com.forkos.forkos.service.ComandaServ
         comandaRepository.deleteById(comandaId);
     }
 
-    // Puedes añadir implementaciones para otros métodos de ComandaService aquí
 }
