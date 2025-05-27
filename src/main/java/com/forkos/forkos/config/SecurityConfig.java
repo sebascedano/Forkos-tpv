@@ -2,45 +2,87 @@ package com.forkos.forkos.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer; // Para deshabilitar CSRF
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; // Importar BCryptPasswordEncoder
+import org.springframework.security.crypto.password.PasswordEncoder; // Importar PasswordEncoder interface
 import org.springframework.security.web.SecurityFilterChain;
 
 // Importaciones necesarias
 import static org.springframework.security.config.Customizer.withDefaults;
 
-@Configuration // Indica a Spring que esta es una clase de configuración
-@EnableWebSecurity // Habilita la configuración de seguridad web de Spring
+@Configuration
+@EnableWebSecurity
 public class SecurityConfig {
 
-    @Bean // Declara un bean gestionado por Spring
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 // Deshabilitar CSRF (esencial para APIs REST sin sesiones basadas en cookies)
                 .csrf(AbstractHttpConfigurer::disable)
-                // Configurar reglas de autorización para peticiones HTTP
+
+                // --- Configurar Reglas de Autorización ---
                 .authorizeHttpRequests(authorizeRequests ->
-                        authorizeRequests
-                                // Permitir acceso a cualquier petición que empiece con /api/productos/
-                                .requestMatchers("/api/productos/**").permitAll()
-                                .requestMatchers("/api/comandas/**").permitAll()
-                                // Puedes añadir otras rutas permitidas aquí si las necesitas (ej: /api/auth/**)
-                                // .requestMatchers("/api/auth/**").permitAll()
-                                // Cualquier otra petición (a otras rutas) requiere autenticación por ahora
-                                .anyRequest().authenticated()
+                                authorizeRequests
+                                        // Permitir acceso público al endpoint de login (lo crearemos en el Paso 5)
+                                        .requestMatchers("/api/auth/login").permitAll() // <<<--- PERMITIR EL LOGIN
+
+                                        // Permitir acceso a swagger/openapi si lo usas
+                                        .requestMatchers("/v2/api-docs", "/v3/api-docs", "/v3/api-docs/**",
+                                                "/swagger-resources", "/swagger-resources/**",
+                                                "/configuration/ui", "/configuration/security",
+                                                "/swagger-ui/**", "/webjars/**", "/swagger-ui.html").permitAll()
+
+                                        // OTRAS RUTAS PUBLICAS SI LAS TIENES (ej: /api/public/**)
+                                        // .requestMatchers("/api/public/**").permitAll()
+
+                                        // Todas las demás peticiones a /api/** REQUIEREN AUTENTICACIÓN
+                                        // Esto protege tus endpoints de Comandas, Productos, etc.
+                                        .requestMatchers("/api/**").authenticated() // <<<--- REQUIERE AUTENTICACIÓN para /api/...
+                        // O si quieres proteger TODO lo que no sea /api/auth/login:
+                        // .anyRequest().authenticated()
                 )
-                // Configurar la autenticación HTTP básica por defecto (puedes cambiarla después)
-                .httpBasic(withDefaults()); // O .httpBasic() con personalización
 
+                // Deshabilitar los mecanismos de autenticación por defecto de Spring
+                // Usaremos un enfoque basado en API (login por POST a /api/auth/login)
+                .httpBasic(AbstractHttpConfigurer::disable) // Deshabilitar HTTP Basic
+                .formLogin(AbstractHttpConfigurer::disable); // Deshabilitar Login de Formulario
 
-        // Retornar la cadena de filtros de seguridad configurada
         return http.build();
     }
 
-    // Más adelante aquí configurarás:
-    // - PasswordEncoder (para hashear contraseñas)
-    // - AuthenticationManager (para gestionar la autenticación)
-    // - UserDetailsService (para cargar detalles de usuario de tu DB)
-    // - JWT filters, si usas autenticación basada en tokens
+    // === Añade este Bean para el PasswordEncoder (si no lo tienes ya) ===
+    // Asegúrate de que este bean exista
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+    // ==============================================
+
+    // === Configurar el AuthenticationManager ===
+    // Spring Boot 2.x/3.x recomienda obtener el AuthenticationManager así
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    // === Configurar el AuthenticationProvider ===
+    // Este proveedor usará tu UserDetailsService y PasswordEncoder
+    // Spring Security lo detectará y lo añadirá al AuthenticationManager por defecto
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider(UserDetailsService userDetailsService,
+                                                            PasswordEncoder passwordEncoder) {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(userDetailsService); // Usa tu CustomUserDetailsService
+        authProvider.setPasswordEncoder(passwordEncoder); // Usa tu BCryptPasswordEncoder
+        return authProvider;
+    }
+
+
 }

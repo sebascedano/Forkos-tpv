@@ -24,7 +24,10 @@ public class Usuario {
     private String pin;
     private boolean activo=true;
 
-    @ManyToOne
+    @Column(nullable=false, unique=true)//username obligatorio y único
+    private String username;
+
+    @ManyToOne(fetch = FetchType.EAGER)//Se cargan los roles con el usuario para autorización
     @JoinColumn(name = "rol_id")
     private Rol rol;
 }
