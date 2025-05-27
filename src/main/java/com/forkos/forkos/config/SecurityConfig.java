@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -13,8 +14,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; // Impo
 import org.springframework.security.crypto.password.PasswordEncoder; // Importar PasswordEncoder interface
 import org.springframework.security.web.SecurityFilterChain;
 
-// Importaciones necesarias
-import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
@@ -38,12 +37,6 @@ public class SecurityConfig {
                                                 "/swagger-resources", "/swagger-resources/**",
                                                 "/configuration/ui", "/configuration/security",
                                                 "/swagger-ui/**", "/webjars/**", "/swagger-ui.html").permitAll()
-
-                                        // OTRAS RUTAS PUBLICAS SI LAS TIENES (ej: /api/public/**)
-                                        // .requestMatchers("/api/public/**").permitAll()
-
-                                        // Todas las demás peticiones a /api/** REQUIEREN AUTENTICACIÓN
-                                        // Esto protege tus endpoints de Comandas, Productos, etc.
                                         .requestMatchers("/api/**").authenticated() // <<<--- REQUIERE AUTENTICACIÓN para /api/...
                         // O si quieres proteger TODO lo que no sea /api/auth/login:
                         // .anyRequest().authenticated()
@@ -51,7 +44,7 @@ public class SecurityConfig {
 
                 // Deshabilitar los mecanismos de autenticación por defecto de Spring
                 // Usaremos un enfoque basado en API (login por POST a /api/auth/login)
-                .httpBasic(AbstractHttpConfigurer::disable) // Deshabilitar HTTP Basic
+                .httpBasic(Customizer.withDefaults()) // Habilitar HTTP Basic
                 .formLogin(AbstractHttpConfigurer::disable); // Deshabilitar Login de Formulario
 
         return http.build();
