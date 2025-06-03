@@ -6,20 +6,16 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UsernameNotFoundException; // Añadir esta importación
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+import java.security.Principal;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -53,6 +49,35 @@ public class AuthController {
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno durante la autenticación: " + ex.getMessage());
         }
+    }
+
+    @GetMapping("/me") // <--- ESTE ES EL NUEVO MÉTODO
+    public ResponseEntity<?> getUserMe(Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No hay usuario autenticado.");
+        }
+
+        if (principal instanceof UsernamePasswordAuthenticationToken) {
+            UsernamePasswordAuthenticationToken authToken = (UsernamePasswordAuthenticationToken) principal;
+            Object userObject = authToken.getPrincipal();
+
+            if (userObject instanceof User) {
+                User userDetails = (User) userObject;
+                String username = userDetails.getUsername();
+                String role = userDetails.getAuthorities().stream()
+                        .map(grantedAuthority -> grantedAuthority.getAuthority())
+                        .filter(authority -> authority.startsWith("ROLE_"))
+                        .findFirst()
+                        .map(authority -> authority.substring("ROLE_".length()))
+                        .orElse("UNKNOWN");
+
+                Map<String, String> userData = new HashMap<>();
+                userData.put("username", username);
+                userData.put("rol", role); // <--- DEBE SER "rol" para que JavaFX lo encuentre
+                return ResponseEntity.ok(userData);
+            }
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("No se pudo obtener la información del usuario.");
     }
 }
 

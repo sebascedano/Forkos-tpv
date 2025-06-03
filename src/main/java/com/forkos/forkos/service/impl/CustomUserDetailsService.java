@@ -51,10 +51,7 @@ public class CustomUserDetailsService implements UserDetailsService { // Impleme
                 true,                   // La cuenta no está bloqueada (generalmente true)
                 // 3. Convertir el/los rol/es del usuario a una colección de GrantedAuthority
                 // Spring Security usa GrantedAuthority para representar permisos/roles
-                // Asumimos que tu entidad Rol tiene un método getNombre() y que el nombre del rol lo usas como permiso/autoridad.
-                // Añadimos el prefijo "ROLE_" a la autoridad, que es convención de Spring Security para roles.
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + usuario.getRol().getNombre())) // Asumiendo que Rol tiene getNombre()
-                // Si tu entidad Usuario tuviera una lista de Roles o Permisos, el mapeo sería más complejo.
         );
     }
 }

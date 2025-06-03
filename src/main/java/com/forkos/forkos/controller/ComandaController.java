@@ -30,6 +30,7 @@ import lombok.AllArgsConstructor;
 class CrearComandaRequest {
     private Long mesaId;
     private Long mozoId;
+    private Integer cantidadComensales;
 }
 
 // Request para agregar un ítem a una Comanda: espera { "productoId": ..., "cantidad": ..., "notas": ... }
@@ -68,11 +69,14 @@ public class ComandaController {
 
     // Endpoint para crear una nueva comanda
     // POST http://localhost:8080/api/comandas
-    // Cuerpo: JSON { "mesaId": 1, "mozoId": 2 }
+    // Cuerpo: JSON { "mesaId": 1, "mozoId": 2, "cantidadComensales": 3}
     @PostMapping
     public ResponseEntity<Object> crearComanda(@RequestBody CrearComandaRequest request) {
         try {
-            ComandaResponseDTO nuevaComanda = comandaService.crearComanda(request.getMesaId(), request.getMozoId());
+            ComandaResponseDTO nuevaComanda = comandaService.crearComanda(
+                    request.getMesaId(),
+                    request.getMozoId(),
+                    request.getCantidadComensales());
             // En caso de éxito, retornamos ResponseEntity<Comanda>
             return ResponseEntity.status(HttpStatus.CREATED).body(nuevaComanda); // 201 Created
         } catch (RuntimeException e) { // Captura excepciones del servicio

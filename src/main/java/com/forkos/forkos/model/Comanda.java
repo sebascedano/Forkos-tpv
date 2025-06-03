@@ -40,7 +40,12 @@ public class Comanda {
     @Column(name = "estado", nullable = false, length = 50) // Mapea a 'estado', no puede ser NULL
     private String estado; // Corresponde a la columna 'estado'
 
+    @Column(name = "cantidad_comensales") // Optional: you can define a column name explicitly
+    private Integer cantidadComensales;
+
     private BigDecimal total; // Mapea a 'total'. Usamos BigDecimal para precisión monetaria.
+
+
 
     @OneToMany(mappedBy = "comanda", cascade = CascadeType.ALL, orphanRemoval = true) // Una Comanda tiene muchos ItemComanda
     // 'mappedBy' indica el nombre del campo en la entidad ItemComanda que posee la relación (@ManyToOne Comanda comanda;)

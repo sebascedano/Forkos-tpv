@@ -16,5 +16,7 @@ public interface ComandaRepository extends JpaRepository<Comanda, Long> {
     // List<Comanda> findByMesaId(Long mesaId); // Encontrar comandas por ID de mesa
     // List<Comanda> findByMozoId(Long mozoId); // Encontrar comandas por ID de mozo
     List<Comanda> findByEstado(String estado); // Encontrar comandas por estado
-    // Optional<Comanda> findByMesaIdAndEstado(Long mesaId, String estado); // Encontrar comanda abierta para una mesa
+
+    // Nuevo método para encontrar una comanda por ID de mesa y estado específico
+    Optional<Comanda> findByMesaIdAndEstado(Long mesaId, String estado);
 }

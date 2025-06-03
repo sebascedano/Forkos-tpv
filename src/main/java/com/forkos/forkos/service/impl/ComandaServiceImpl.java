@@ -110,33 +110,38 @@ public class ComandaServiceImpl implements com.forkos.forkos.service.ComandaServ
 
     // Implementación de crearComanda(...)
     @Override
-    @Transactional // Asegura que la operación sea atómica
-    public ComandaResponseDTO crearComanda(Long mesaId, Long mozoId) {
-        Optional<Mesa> mesaOpt = mesaRepository.findById(mesaId);
-        Optional<Usuario> mozoOpt = userRepository.findById(mozoId);
+    @Transactional
+    public ComandaResponseDTO crearComanda(Long mesaId, Long mozoId, Integer cantidadComensales) {
+        Mesa mesa = mesaRepository.findById(mesaId)
+                .orElseThrow(() -> new RuntimeException("Mesa con ID " + mesaId + " no encontrada"));
 
-        if (!mesaOpt.isPresent()) {
-            throw new RuntimeException("Mesa con ID " + mesaId + " no encontrada");
-        }
-        if (!mozoOpt.isPresent()) {
-            throw new RuntimeException("Usuario (Mozo) con ID " + mozoId + " no encontrado");
+        // VALIDACIÓN DEL ESTADO DE LA MESA USANDO STRINGS
+        if (mesa.getEstado().equals("OCUPADA") || mesa.getEstado().equals("PENDIENTE_PAGO")) {
+            throw new RuntimeException("La mesa ya está " + mesa.getEstado() + " y no se puede abrir una nueva comanda.");
         }
 
-        Mesa mesa = mesaOpt.get();
-        Usuario mozo=mozoOpt.get();
+        Usuario mozo = userRepository.findById(mozoId)
+                .orElseThrow(() -> new RuntimeException("Usuario (Mozo) con ID " + mozoId + " no encontrado"));
+
+        // VALIDACIÓN DE CANTIDAD DE COMENSALES
+        if (cantidadComensales == null || cantidadComensales <= 0 || cantidadComensales > mesa.getCapacidad()) {
+            throw new RuntimeException("Número de comensales inválido para la mesa " + mesa.getNumero() + ". Debe ser entre 1 y " + mesa.getCapacidad() + ".");
+        }
 
         Comanda nuevaComanda = new Comanda();
         nuevaComanda.setMesa(mesa);
         nuevaComanda.setMozo(mozo);
         nuevaComanda.setFechaHoraApertura(LocalDateTime.now());
-        nuevaComanda.setEstado("ABIERTA");
         nuevaComanda.setTotal(BigDecimal.ZERO);
-        nuevaComanda.setItems(new java.util.ArrayList<>()); // Inicializa la lista de ítems
+        nuevaComanda.setItems(new java.util.ArrayList<>());
+        nuevaComanda.setEstado("ABIERTA"); // Asignar el String directamente
+        nuevaComanda.setCantidadComensales(cantidadComensales); // Guardar la cantidad de comensales
 
-        //Guarda la nueva comanda
-        Comanda savedComanda=comandaRepository.save(nuevaComanda);
-        // La lista de items se inicializará por defecto (usualmente a null o lista vacía por Lombok/JPA)
-        // Si usas Lombok @AllArgsConstructor, asegúrate que pueda manejar la inicialización de listas o usa @Builder
+        Comanda savedComanda = comandaRepository.save(nuevaComanda);
+
+        // ACTUALIZAR EL ESTADO DE LA MESA A OCUPADA USANDO STRING
+        mesa.setEstado("OCUPADA"); // Asignar el String directamente
+        mesaRepository.save(mesa);
 
         return mapComandaToDTO(savedComanda);
     }
@@ -321,6 +326,24 @@ public class ComandaServiceImpl implements com.forkos.forkos.service.ComandaServ
         BigDecimal totalActualizado = calcularTotalComanda(comanda);
         comanda.setTotal(totalActualizado);
         comandaRepository.save(comanda); // Guarda la comanda con el total actualizado
+    }
+
+    // Implementacion getComandaAbiertaPorMesaId
+    @Override
+    @Transactional(readOnly = true) // Es una operación de lectura
+    public Optional<ComandaResponseDTO> getComandaAbiertaPorMesaId(Long mesaId) {
+        // Usa el método que definimos en ComandaRepository
+        Optional<Comanda> comandaOpt = comandaRepository.findByMesaIdAndEstado(mesaId, "ABIERTA");
+
+        // Si la comanda existe, fuerza la carga de los ítems (si son LAZY)
+        comandaOpt.ifPresent(comanda -> {
+            if (comanda.getItems() != null) {
+                comanda.getItems().size(); // Esto fuerza la inicialización de la colección LAZY
+            }
+        });
+
+        // Mapea la entidad Comanda a ComandaResponseDTO si se encuentra
+        return comandaOpt.map(this::mapComandaToDTO);
     }
 
     // Implementación de eliminarComanda(...)

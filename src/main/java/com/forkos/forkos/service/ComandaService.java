@@ -23,7 +23,7 @@ public interface ComandaService {
      * @param mozoId El ID del mozo (usuario).
      * @return La comanda recién creada.
      */
-    ComandaResponseDTO crearComanda(Long mesaId, Long mozoId);
+    ComandaResponseDTO crearComanda(Long mesaId, Long mozoId, Integer cantidadComensales);
 
     /**
      * Agrega un ítem (producto con cantidad y notas) a una comanda existente.
@@ -82,5 +82,10 @@ public interface ComandaService {
      */
     void eliminarComanda(Long comandaId);
 
-    // Puedes añadir métodos para, por ejemplo, obtener comandas por mesa, por fecha, etc.
+    /**
+     * Obtiene una comanda abierta para una mesa específica.
+     * @param mesaId El ID de la mesa.
+     * @return Un Optional que contiene la comanda abierta si se encuentra.
+     */
+    Optional<ComandaResponseDTO> getComandaAbiertaPorMesaId(Long mesaId);
 }

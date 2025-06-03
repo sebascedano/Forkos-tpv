@@ -23,29 +23,25 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Deshabilitar CSRF (esencial para APIs REST sin sesiones basadas en cookies)
                 .csrf(AbstractHttpConfigurer::disable)
-
-                // --- Configurar Reglas de Autorización ---
                 .authorizeHttpRequests(authorizeRequests ->
-                                authorizeRequests
-                                        // Permitir acceso público al endpoint de login (lo crearemos en el Paso 5)
-                                        .requestMatchers("/api/auth/login").permitAll() // <<<--- PERMITIR EL LOGIN
+                        authorizeRequests
+                                .requestMatchers("/api/auth/**").permitAll()
+                                .requestMatchers("/v2/api-docs", "/v3/api-docs", "/v3/api-docs/**",
+                                        "/swagger-resources", "/swagger-resources/**",
+                                        "/configuration/ui", "/configuration/security",
+                                        "/swagger-ui/**", "/webjars/**", "/swagger-ui.html").permitAll()
 
-                                        // Permitir acceso a swagger/openapi si lo usas
-                                        .requestMatchers("/v2/api-docs", "/v3/api-docs", "/v3/api-docs/**",
-                                                "/swagger-resources", "/swagger-resources/**",
-                                                "/configuration/ui", "/configuration/security",
-                                                "/swagger-ui/**", "/webjars/**", "/swagger-ui.html").permitAll()
-                                        .requestMatchers("/api/**").authenticated() // <<<--- REQUIERE AUTENTICACIÓN para /api/...
-                        // O si quieres proteger TODO lo que no sea /api/auth/login:
-                        // .anyRequest().authenticated()
+                                // Permite el acceso a /api/user/me a cualquier usuario autenticado
+                                .requestMatchers("/api/user/me").authenticated()
+
+                                // Si quieres proteger otras rutas de /api/, déjalo al final, pero asegúrate del orden
+                                // .requestMatchers("/api/**").authenticated() // Si tienes otras rutas bajo /api/ que no son user/me
+
+                                .anyRequest().authenticated() // Cualquier otra petición requiere autenticación
                 )
-
-                // Deshabilitar los mecanismos de autenticación por defecto de Spring
-                // Usaremos un enfoque basado en API (login por POST a /api/auth/login)
-                .httpBasic(Customizer.withDefaults()) // Habilitar HTTP Basic
-                .formLogin(AbstractHttpConfigurer::disable); // Deshabilitar Login de Formulario
+                .httpBasic(Customizer.withDefaults())
+                .formLogin(AbstractHttpConfigurer::disable);
 
         return http.build();
     }
