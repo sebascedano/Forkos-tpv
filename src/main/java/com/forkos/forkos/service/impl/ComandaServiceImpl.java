@@ -26,9 +26,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-// No usaremos Lombok en esta clase de servicio para el ejemplo
-
-@Service // Indica que es un componente de servicio gestionado por Spring
+@Service
 public class ComandaServiceImpl implements com.forkos.forkos.service.ComandaService { // Implementa la interfaz ComandaService
 
     // Inyecta los repositorios necesarios
@@ -116,8 +114,9 @@ public class ComandaServiceImpl implements com.forkos.forkos.service.ComandaServ
                 .orElseThrow(() -> new RuntimeException("Mesa con ID " + mesaId + " no encontrada"));
 
         // VALIDACIÓN DEL ESTADO DE LA MESA USANDO STRINGS
-        if (mesa.getEstado().equals("OCUPADA") || mesa.getEstado().equals("PENDIENTE_PAGO")) {
-            throw new RuntimeException("La mesa ya está " + mesa.getEstado() + " y no se puede abrir una nueva comanda.");
+        boolean yaTieneComandaAbierta = comandaRepository.existsByMesaIdAndEstado(mesaId, "ABIERTA");
+        if (yaTieneComandaAbierta) {
+            throw new IllegalStateException("La mesa " + mesa.getNumero() + " ya tiene una comanda abierta.");
         }
 
         Usuario mozo = userRepository.findById(mozoId)
@@ -299,12 +298,17 @@ public class ComandaServiceImpl implements com.forkos.forkos.service.ComandaServ
         comanda.setEstado("CERRADA"); // O el nombre del estado CERRADA
         comanda.setFechaHoraCierre(LocalDateTime.now());
 
+        // --- ACTUALIZA EL ESTADO DE LA MESA ASOCIADA ---
+        Mesa mesaAsociada = comanda.getMesa();
+        if (mesaAsociada != null) {
+            mesaAsociada.setEstado("LIBRE");
+            mesaRepository.save(mesaAsociada);
+        }
+
         // Guarda la comanda cerrada
         Comanda closedComanda = comandaRepository.save(comanda);
-
         // --- === Mapear la entidad guardada a DTO === ---
-        // Llama al método de mapeo AQUI, dentro del método @Transactional.
-        return mapComandaToDTO(closedComanda); // Llama al método de mapeo
+        return mapComandaToDTO(closedComanda);
     }
 
     // Implementación de eliminarItemComanda(...)

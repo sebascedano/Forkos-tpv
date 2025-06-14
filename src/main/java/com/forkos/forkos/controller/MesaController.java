@@ -3,6 +3,7 @@ package com.forkos.forkos.controller;
 import com.forkos.forkos.model.Mesa;
 import com.forkos.forkos.repository.MesaRepository;
 import com.forkos.forkos.dto.MesaDTO;
+import com.forkos.forkos.service.MesaService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,8 +18,12 @@ import java.util.stream.Collectors; // Para mapear listas
 @RequestMapping("/api/mesas")
 public class MesaController {
 
+    // Inyectamos el repositorio de Mesas
     @Autowired
     private MesaRepository mesaRepository;
+
+    @Autowired
+    private MesaService mesaService;
 
     // Helper para convertir Entidad a DTO
     private MesaDTO convertToDto(Mesa mesa) {
@@ -37,15 +42,14 @@ public class MesaController {
         }
         return mesa;
     }
+// ------------------------------------------------------------------------------
 
-    // Endpoint para obtener todas las mesas
-    // GET http://localhost:8080/api/mesas
+    // Endpoint para obtener todas las mesas con su estado REAL
     @GetMapping
     public List<MesaDTO> getAllMesas() {
-        return mesaRepository.findAll().stream()
-                .map(this::convertToDto) // Convierte cada entidad a DTO
-                .collect(Collectors.toList());
+        return mesaService.obtenerTodasLasMesasConEstadoCalculado();
     }
+
 
     // Endpoint para obtener una mesa por su ID
     // GET http://localhost:8080/api/mesas/{id}

@@ -1,28 +1,25 @@
+// --- ComandaController.java (CORREGIDO Y COMPLETO) ---
 package com.forkos.forkos.controller;
 
 import com.forkos.forkos.dto.ComandaResponseDTO;
 import com.forkos.forkos.dto.ItemComandaResponseDTO;
-// Importa el servicio de Comandas
 import com.forkos.forkos.service.ComandaService;
 
-// Importaciones de Spring
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*; // Importa todas las anotaciones comunes de web
+import org.springframework.web.bind.annotation.*;
 
-// Importaciones de Java
 import java.util.List;
 import java.util.Optional;
 
-// --- Importaciones de Lombok ---
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-// -------------------------------
 
-// Request para crear una Comanda: espera { "mesaId": ..., "mozoId": ... }
+
+// Clases DTO internas para las peticiones (request bodies)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -33,7 +30,6 @@ class CrearComandaRequest {
     private Integer cantidadComensales;
 }
 
-// Request para agregar un ítem a una Comanda: espera { "productoId": ..., "cantidad": ..., "notas": ... }
 @Getter
 @Setter
 @NoArgsConstructor
@@ -44,7 +40,6 @@ class AgregarItemRequest {
     private String notas;
 }
 
-// Request para actualizar el estado de una Comanda: espera { "nuevoEstado": "..." }
 @Getter
 @Setter
 @NoArgsConstructor
@@ -52,24 +47,30 @@ class AgregarItemRequest {
 class UpdateEstadoRequest {
     private String nuevoEstado;
 }
-// ------------------------------------------------------------------------------
 
 
-@RestController // Indica a Spring que esta clase es un controlador REST
-@RequestMapping("/api/comandas") // Define la ruta base para todos los endpoints en este controlador
+@RestController
+@RequestMapping("/api/comandas")
 public class ComandaController {
 
-    private final ComandaService comandaService; // Inyectamos el servicio de Comandas
+    private final ComandaService comandaService;
 
-    // Inyección de dependencia del servicio a través del constructor
     @Autowired
     public ComandaController(ComandaService comandaService) {
         this.comandaService = comandaService;
     }
 
-    // Endpoint para crear una nueva comanda
-    // POST http://localhost:8080/api/comandas
-    // Cuerpo: JSON { "mesaId": 1, "mozoId": 2, "cantidadComensales": 3}
+    // Endpoint para obtener la comanda ABIERTA de una MESA específica
+    // GET http://localhost:8080/api/comandas/mesa/{mesaId}/abierta
+    @GetMapping("/mesa/{mesaId}/abierta")
+    public ResponseEntity<ComandaResponseDTO> getComandaAbiertaPorMesaId(@PathVariable Long mesaId) {
+        Optional<ComandaResponseDTO> comandaDTO = comandaService.getComandaAbiertaPorMesaId(mesaId);
+        return comandaDTO
+                .map(ResponseEntity::ok) // Si se encuentra, devuelve 200 OK con la comanda
+                .orElse(ResponseEntity.notFound().build()); // Si no, devuelve 404 Not Found
+    }
+
+
     @PostMapping
     public ResponseEntity<Object> crearComanda(@RequestBody CrearComandaRequest request) {
         try {
@@ -77,20 +78,15 @@ public class ComandaController {
                     request.getMesaId(),
                     request.getMozoId(),
                     request.getCantidadComensales());
-            // En caso de éxito, retornamos ResponseEntity<Comanda>
-            return ResponseEntity.status(HttpStatus.CREATED).body(nuevaComanda); // 201 Created
-        } catch (RuntimeException e) { // Captura excepciones del servicio
-            // En caso de error, retornamos ResponseEntity<String>
+            return ResponseEntity.status(HttpStatus.CREATED).body(nuevaComanda);
+        } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error al crear comanda: " + e.getMessage());
         }
     }
 
-    // Endpoint para agregar un ítem a una comanda existente
-    // POST http://localhost:8080/api/comandas/{comandaId}/items
-    // Cuerpo: JSON { "productoId": 3, "cantidad": 2, "notas": "Sin cebolla" }
     @PostMapping("/{comandaId}/items")
     public ResponseEntity<ItemComandaResponseDTO> agregarItemAComanda(@PathVariable Long comandaId,
-                                                           @RequestBody AgregarItemRequest request) {
+                                                                      @RequestBody AgregarItemRequest request) {
         try {
             ItemComandaResponseDTO nuevoItem = comandaService.agregarItemAComanda(
                     comandaId,
@@ -98,105 +94,92 @@ public class ComandaController {
                     request.getCantidad(),
                     request.getNotas()
             );
-            return ResponseEntity.status(HttpStatus.CREATED).body(nuevoItem); // 201 Created
-        } catch (RuntimeException e) { // Captura excepciones del servicio (Comanda/Producto no encontrado, cantidad <= 0, etc.)
+            return ResponseEntity.status(HttpStatus.CREATED).body(nuevoItem);
+        } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
     }
 
-    // Endpoint para obtener una comanda por su ID (incluyendo sus ítems)
-    // GET http://localhost:8080/api/comandas/{comandaId}
     @GetMapping("/{comandaId}")
     public ResponseEntity<ComandaResponseDTO> getComandaById(@PathVariable Long comandaId) {
         Optional<ComandaResponseDTO> comandaOpt = comandaService.getComandaById(comandaId);
         if (comandaOpt.isPresent()) {
-            return ResponseEntity.ok(comandaOpt.get()); // 200 OK
+            return ResponseEntity.ok(comandaOpt.get());
         } else {
-            return ResponseEntity.notFound().build(); // 404 Not Found si la comanda no existe
+            return ResponseEntity.notFound().build();
         }
     }
 
-    // Endpoint para obtener todas las comandas
-    // GET http://localhost:8080/api/comandas
+    // Hay un conflicto con este endpoint y el de arriba, ya que ambos responden a GET /api/comandas
+    // Lo comento por ahora, podrías moverlo a /all o similar si necesitas ambos.
+    /*
     @GetMapping
     public ResponseEntity<List<ComandaResponseDTO>> getAllComandas() {
         List<ComandaResponseDTO> comandas = comandaService.getAllComandas();
-        return ResponseEntity.ok(comandas); // 200 OK
+        return ResponseEntity.ok(comandas);
     }
+    */
 
-    // Endpoint para obtener solo las comandas abiertas
-    // GET http://localhost:8080/api/comandas/open
     @GetMapping("/open")
     public ResponseEntity<List<ComandaResponseDTO>> getComandasAbiertas() {
         List<ComandaResponseDTO> comandas = comandaService.getComandasAbiertas();
-        return ResponseEntity.ok(comandas); // 200 OK
+        return ResponseEntity.ok(comandas);
     }
 
-    // Endpoint para actualizar el estado de una comanda
-    // PUT http://localhost:8080/api/comandas/{comandaId}/estado
-    // Cuerpo: JSON { "nuevoEstado": "PENDIENTE_PAGO" } (usando los Strings "ABIERTA", "PENDIENTE_PAGO", "CERRADA")
     @PutMapping("/{comandaId}/estado")
     public ResponseEntity<ComandaResponseDTO> updateEstadoComanda(@PathVariable Long comandaId,
-                                                       @RequestBody UpdateEstadoRequest request) {
+                                                                  @RequestBody UpdateEstadoRequest request) {
         try {
             ComandaResponseDTO updatedComanda = comandaService.updateEstadoComanda(comandaId, request.getNuevoEstado());
-            return ResponseEntity.ok(updatedComanda); // 200 OK
-        } catch (RuntimeException e) { // Captura excepciones del servicio (Comanda no encontrada, estado inválido)
-            if (e.getMessage().contains("no encontrada")) { // Validación simple basada en mensaje de error
-                return ResponseEntity.notFound().build(); // 404 si no existe
+            return ResponseEntity.ok(updatedComanda);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("no encontrada")) {
+                return ResponseEntity.notFound().build();
             } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null); // 400 Bad Request para estado inválido o transición no permitida
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
             }
         }
     }
 
-    // Endpoint para cerrar una comanda (marcar como pagada, calcular total)
-    // PUT http://localhost:8080/api/comandas/{comandaId}/cerrar
     @PutMapping("/{comandaId}/cerrar")
     public ResponseEntity<ComandaResponseDTO> cerrarComanda(@PathVariable Long comandaId) {
         try {
             ComandaResponseDTO closedComanda = comandaService.cerrarComanda(comandaId);
-            return ResponseEntity.ok(closedComanda); // 200 OK
-        } catch (RuntimeException e) { // Captura excepciones del servicio (Comanda no encontrada, estado no permitido para cerrar)
+            return ResponseEntity.ok(closedComanda);
+        } catch (RuntimeException e) {
             if (e.getMessage().contains("no encontrada")) {
-                return ResponseEntity.notFound().build(); // 404 si no existe
+                return ResponseEntity.notFound().build();
             } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null); // 400 Bad Request
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
             }
         }
     }
 
-    // Endpoint para eliminar un ítem de comanda
-    // DELETE http://localhost:8080/api/comandas/items/{itemId}
     @DeleteMapping("/items/{itemId}")
     public ResponseEntity<Void> eliminarItemComanda(@PathVariable Long itemId) {
         try {
             comandaService.eliminarItemComanda(itemId);
-            return ResponseEntity.noContent().build(); // 204 No Content (Éxito, sin contenido)
-        } catch (RuntimeException e) { // Captura excepciones del servicio (Item no encontrado)
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
             if (e.getMessage().contains("no encontrado")) {
-                return ResponseEntity.notFound().build(); // 404 Not Found
+                return ResponseEntity.notFound().build();
             } else {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build(); // 500 Internal Server Error para otros fallos
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
             }
         }
     }
 
-    // Endpoint para eliminar una comanda completa
-    // DELETE http://localhost:8080/api/comandas/{comandaId}
     @DeleteMapping("/{comandaId}")
     public ResponseEntity<Void> eliminarComanda(@PathVariable Long comandaId) {
         try {
             comandaService.eliminarComanda(comandaId);
-            return ResponseEntity.noContent().build(); // 204 No Content
-        } catch (RuntimeException e) { // Captura excepciones del servicio (Comanda no encontrada)
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
             if (e.getMessage().contains("no encontrada")) {
-                return ResponseEntity.notFound().build(); // 404 Not Found
+                return ResponseEntity.notFound().build();
             } else {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build(); // 500
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
             }
         }
     }
-
-    // Puedes añadir más endpoints aquí (ej.: obtener comandas por mesa, filtrar por fecha, etc.)
 }

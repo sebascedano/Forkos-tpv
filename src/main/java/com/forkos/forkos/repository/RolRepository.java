@@ -8,9 +8,5 @@ import java.util.Optional; // Importa Optional si defines métodos que puedan no
 
 @Repository
 public interface RolRepository extends JpaRepository<Rol, Long> {
-
-    // Spring Data JPA proporciona automáticamente métodos CRUD básicos.
-
-    // Puedes añadir métodos de búsqueda personalizados aquí, por ejemplo:
-    // Optional<Rol> findByNombre(String nombre); // Encontrar rol por nombre (pusimos UNIQUE en el modelo)
+    Optional<Rol> findByNombre(String nombre); // Método para buscar un rol por su nombre
 }

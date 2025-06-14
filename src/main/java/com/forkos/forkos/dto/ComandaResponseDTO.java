@@ -1,5 +1,6 @@
 package com.forkos.forkos.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
@@ -16,7 +17,10 @@ import java.util.ArrayList; // Para inicializar la lista
 @AllArgsConstructor
 public class ComandaResponseDTO {
     private Long id;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
     private LocalDateTime fechaHoraApertura;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
     private LocalDateTime fechaHoraCierre;
     private String estado;
     private BigDecimal total;

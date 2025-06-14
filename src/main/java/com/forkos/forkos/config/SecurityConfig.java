@@ -13,6 +13,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; // Importar BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder; // Importar PasswordEncoder interface
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 
 @Configuration
@@ -34,10 +36,7 @@ public class SecurityConfig {
 
                                 // Permite el acceso a /api/user/me a cualquier usuario autenticado
                                 .requestMatchers("/api/user/me").authenticated()
-
-                                // Si quieres proteger otras rutas de /api/, déjalo al final, pero asegúrate del orden
-                                // .requestMatchers("/api/**").authenticated() // Si tienes otras rutas bajo /api/ que no son user/me
-
+                                // Permite el acceso a /api/user/roles a cualquier usuario autenticado
                                 .anyRequest().authenticated() // Cualquier otra petición requiere autenticación
                 )
                 .httpBasic(Customizer.withDefaults())
@@ -71,6 +70,20 @@ public class SecurityConfig {
         authProvider.setUserDetailsService(userDetailsService); // Usa tu CustomUserDetailsService
         authProvider.setPasswordEncoder(passwordEncoder); // Usa tu BCryptPasswordEncoder
         return authProvider;
+    }
+
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/api/**")
+                        .allowedOrigins("http://localhost:5174","http://localhost:5173") // Puerto del frontend
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedHeaders("*")
+                        .allowCredentials(true);
+            }
+        };
     }
 
 

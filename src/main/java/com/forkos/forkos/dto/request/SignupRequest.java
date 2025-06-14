@@ -1,9 +1,10 @@
 package com.forkos.forkos.dto.request;
-
-import lombok.*;
+import lombok.Data;
 
 @Data
-public class LoginRequest {
+public class SignupRequest {
+    private String nombre;
     private String username;
+    private String email;
     private String password;
 }
