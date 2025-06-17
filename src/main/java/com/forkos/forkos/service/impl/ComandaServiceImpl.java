@@ -149,68 +149,57 @@ public class ComandaServiceImpl implements com.forkos.forkos.service.ComandaServ
     @Override
     @Transactional
     public ItemComandaResponseDTO agregarItemAComanda(Long comandaId, Long productoId, int cantidad, String notas) {
-        Optional<Comanda> comandaOpt = comandaRepository.findById(comandaId);
-        Optional<Producto> productoOpt = productoRepository.findById(productoId);
+        Comanda comanda = comandaRepository.findById(comandaId)
+                .orElseThrow(() -> new RuntimeException("Comanda con ID " + comandaId + " no encontrada"));
 
-        if (!comandaOpt.isPresent()) {
-            throw new RuntimeException("Comanda con ID " + comandaId + " no encontrada");
-        }
-        if (!productoOpt.isPresent()) {
-            throw new RuntimeException("Producto con ID " + productoId + " no encontrado");
-        }
+        Producto producto = productoRepository.findById(productoId)
+                .orElseThrow(() -> new RuntimeException("Producto con ID " + productoId + " no encontrado"));
+
         if (cantidad <= 0) {
-            throw new RuntimeException("La cantidad debe ser mayor que cero");
+            throw new IllegalArgumentException("La cantidad debe ser mayor que cero");
         }
 
-        Comanda comanda = comandaOpt.get();
-        Producto producto = productoOpt.get();
-
-        // Validar que la comanda esté ABIERTA
         if (!"ABIERTA".equals(comanda.getEstado())) {
-            throw new RuntimeException("No se pueden añadir items a una comanda que no está ABIERTA.");
+            throw new IllegalStateException("No se pueden añadir items a una comanda que no está ABIERTA.");
         }
+
+        // --- INICIO DE LA NUEVA LÓGICA DE STOCK ---
+
+        // 1. Validación: Comprobamos si hay stock suficiente.
+        if (producto.getStock() < cantidad) {
+            // Si no hay, lanzamos un error claro que el frontend podrá mostrar.
+            throw new IllegalStateException("No hay stock suficiente para '" + producto.getNombre() + "'. Stock actual: " + producto.getStock());
+        }
+
+        // 2. Reducción: Si hay stock, lo disminuimos.
+        producto.setStock(producto.getStock() - cantidad);
+        // No es necesario llamar a productoRepository.save(producto) gracias a @Transactional.
+        // Hibernate detectará el cambio y actualizará el producto en la base de datos automáticamente.
+
+        // --- FIN DE LA NUEVA LÓGICA DE STOCK ---
 
         ItemComanda nuevoItem = new ItemComanda();
-        nuevoItem.setComanda(comanda); // Establece la relación con comanda
+        nuevoItem.setComanda(comanda);
         nuevoItem.setProducto(producto);
         nuevoItem.setCantidad(cantidad);
-        nuevoItem.setPrecioUnitario(producto.getPrecio()); // Precio al momento de añadir
+        nuevoItem.setPrecioUnitario(producto.getPrecio());
         nuevoItem.setNotas(notas);
-        nuevoItem.setEstado("PEDIDO"); // Estado inicial del ítem (puedes usar otros estados para items si es relevante)
+        nuevoItem.setEstado("NUEVO"); // Usamos "NUEVO" como estado inicial claro
 
-        // Opcional: Asegurar la relación bidireccional en la lista de la comanda
-        // Si la lista 'items' en Comanda es null, inicialízala.
         if (comanda.getItems() == null) {
             comanda.setItems(new java.util.ArrayList<>());
         }
-        comanda.getItems().add(nuevoItem); // Añade el item a la lista de la comanda
+        comanda.getItems().add(nuevoItem);
 
-        // Guardar el nuevo ítem. Spring Data JPA debería gestionar la relación.
+        // Guardar el nuevo ítem nos devuelve la instancia ya persistida con su ID
         ItemComanda savedItem = itemComandaRepository.save(nuevoItem);
 
-        // Recalcular y guardar el total de la comanda después de añadir el item
-        BigDecimal totalActualizado = calcularTotalComanda(comanda);
-        comanda.setTotal(totalActualizado);
-        Comanda updatedComanda = comandaRepository.save(comanda);// Guarda la comanda con el total actualizado
+        // Recalcular y guardar el total de la comanda
+        comanda.setTotal(calcularTotalComanda(comanda));
+        comandaRepository.save(comanda);
 
-        // === Importante: Si necesitas el ID correcto del ItemComanda recién añadido en el DTO retornado ===
-        // La forma más segura de obtener el ItemComanda persistido después de guardar la Comanda.
-        // Busca el item en la lista actualizada de la Comanda persistida
-        ItemComanda persistedItem = updatedComanda.getItems().stream()
-                .filter(item ->
-                                // Criterios para encontrar el item que acabas de añadir. El producto y la cantidad son buenos identificadores.
-                                item.getProducto() != null && item.getProducto().getId().equals(productoId) && item.getCantidad().equals(cantidad)
-                                        // Puedes añadir otros criterios si es posible que haya ítems con el mismo producto/cantidad
-                                        && (item.getNotas() == null ? notas == null : item.getNotas().equals(notas))
-                        // Si tienes tiempo o fecha de creación del item, sería el mejor criterio.
-                )
-                .findFirst()
-                // Si no lo encuentras (muy raro si la cascada funciona), lanza un error interno.
-                .orElseThrow(() -> new RuntimeException("Error interno: No se encontró el item recién añadido después de guardar la comanda."));
-
-
-        // Llama al método de mapeo para convertir el ítem persistido (con ID) a su DTO.
-        return mapItemComandaToDTO(persistedItem); // Llama al método de mapeo con el ítem persistido
+        // Usamos directamente el 'savedItem' que ya tiene el ID, es más simple.
+        return mapItemComandaToDTO(savedItem);
     }
 
     // Método auxiliar para calcular el total de una comanda
