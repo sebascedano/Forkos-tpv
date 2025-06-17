@@ -1,7 +1,6 @@
 package com.forkos.forkos.controller;
 
 import com.forkos.forkos.dto.request.ProductoRequestDTO;
-import com.forkos.forkos.model.Producto; // Importa la entidad Producto
 import com.forkos.forkos.service.ProductoService; // Importa la interfaz del servicio
 import com.forkos.forkos.dto.ProductoResponseDTO; // Importa el DTO para la respuesta de productos
 import org.springframework.beans.factory.annotation.Autowired; // Importa @Autowired

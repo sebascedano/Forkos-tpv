@@ -5,7 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List; // Importa List si defines métodos que retornan múltiples resultados
-import java.util.Optional; // Importa Optional si defines métodos que puedan no encontrar resultados
 
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
