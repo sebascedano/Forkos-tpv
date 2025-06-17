@@ -21,7 +21,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @EnableWebSecurity
 public class SecurityConfig {
 
-
+    // ==============================================
+    // === Configurar el SecurityFilterChain ===
+    // Este método configura las reglas de seguridad para las peticiones HTTP
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -45,8 +47,8 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // === Añade este Bean para el PasswordEncoder (si no lo tienes ya) ===
-    // Asegúrate de que este bean exista
+    // ==============================================
+    // === Configurar el UserDetailsService y PasswordEncoder ===
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -54,15 +56,13 @@ public class SecurityConfig {
     // ==============================================
 
     // === Configurar el AuthenticationManager ===
-    // Spring Boot 2.x/3.x recomienda obtener el AuthenticationManager así
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
     // === Configurar el AuthenticationProvider ===
-    // Este proveedor usará tu UserDetailsService y PasswordEncoder
-    // Spring Security lo detectará y lo añadirá al AuthenticationManager por defecto
+    // Este método configura el DaoAuthenticationProvider
     @Bean
     public DaoAuthenticationProvider authenticationProvider(UserDetailsService userDetailsService,
                                                             PasswordEncoder passwordEncoder) {
@@ -72,6 +72,8 @@ public class SecurityConfig {
         return authProvider;
     }
 
+    // ==============================================
+    // === Configurar CORS para permitir peticiones desde el frontend ===
     @Bean
     public WebMvcConfigurer corsConfigurer() {
         return new WebMvcConfigurer() {

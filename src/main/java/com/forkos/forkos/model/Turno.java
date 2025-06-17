@@ -6,26 +6,25 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "productos")
+@Table(name = "turnos")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-
-public class Producto {
+public class Turno {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String nombre;
-    private String descripcion;
-    private BigDecimal precio;
-    private int stock;
+    @Column(nullable = false)
+    private LocalDateTime fechaHoraApertura;
 
-    @ManyToOne
-    @JoinColumn(name = "categoria_id")
-    private Categoria categoria;
+    private LocalDateTime fechaHoraCierre;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private EstadoTurno estado;
 }

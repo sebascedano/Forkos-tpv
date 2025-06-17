@@ -174,7 +174,7 @@ public class ComandaServiceImpl implements com.forkos.forkos.service.ComandaServ
         nuevoItem.setComanda(comanda); // Establece la relación con comanda
         nuevoItem.setProducto(producto);
         nuevoItem.setCantidad(cantidad);
-        nuevoItem.setPrecioUnitario(BigDecimal.valueOf(producto.getPrecio())); // Precio al momento de añadir
+        nuevoItem.setPrecioUnitario(producto.getPrecio()); // Precio al momento de añadir
         nuevoItem.setNotas(notas);
         nuevoItem.setEstado("PEDIDO"); // Estado inicial del ítem (puedes usar otros estados para items si es relevante)
 

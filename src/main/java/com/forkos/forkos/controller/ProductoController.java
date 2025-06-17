@@ -1,8 +1,9 @@
 package com.forkos.forkos.controller;
 
+import com.forkos.forkos.dto.request.ProductoRequestDTO;
 import com.forkos.forkos.model.Producto; // Importa la entidad Producto
 import com.forkos.forkos.service.ProductoService; // Importa la interfaz del servicio
-
+import com.forkos.forkos.dto.ProductoResponseDTO; // Importa el DTO para la respuesta de productos
 import org.springframework.beans.factory.annotation.Autowired; // Importa @Autowired
 import org.springframework.http.HttpStatus; // Para códigos de estado HTTP
 import org.springframework.http.ResponseEntity; // Para envolver respuestas HTTP
@@ -26,16 +27,16 @@ public class ProductoController {
     // Endpoint para obtener todos los productos
     // GET http://localhost:8080/api/productos
     @GetMapping
-    public ResponseEntity<List<Producto>> getAllProductos() {
-        List<Producto> productos = productoService.getAllProductos(); // Llama al servicio
+    public ResponseEntity<List<ProductoResponseDTO>> getAllProductos() {
+        List<ProductoResponseDTO> productos = productoService.getAllProductos(); // Llama al servicio
         return ResponseEntity.ok(productos); // Retorna la lista de productos con estado HTTP 200 OK
     }
 
     // Endpoint para obtener un producto por su ID
     // GET http://localhost:8080/api/productos/{id} (ej: /api/productos/1)
     @GetMapping("/{id}") // {id} es una variable de ruta
-    public ResponseEntity<Producto> getProductoById(@PathVariable Long id) { // @PathVariable mapea el {id} de la URL al parámetro 'id' del método
-        Optional<Producto> producto = productoService.getProductoById(id); // Llama al servicio
+    public ResponseEntity<ProductoResponseDTO> getProductoById(@PathVariable Long id) { // @PathVariable mapea el {id} de la URL al parámetro 'id' del método
+        Optional<ProductoResponseDTO> producto = productoService.getProductoById(id); // Llama al servicio
         if (producto.isPresent()) {
             return ResponseEntity.ok(producto.get()); // Si se encontró el producto, retornarlo con estado 200 OK
         } else {
@@ -47,28 +48,27 @@ public class ProductoController {
     // POST http://localhost:8080/api/productos
     // El cuerpo de la petición debe contener los datos del producto en formato JSON
     @PostMapping
-    public ResponseEntity<Producto> createProducto(@RequestBody Producto producto) { // @RequestBody mapea el JSON del cuerpo de la petición a un objeto Producto Java
-        Producto savedProducto = productoService.saveProducto(producto); // Llama al servicio para guardar el producto
-        // Retorna el producto guardado con estado HTTP 201 Created
-        // Puedes usar HttpStatus.CREATED directamente o ResponseEntity.status(HttpStatus.CREATED)
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedProducto);
+    public ResponseEntity<ProductoResponseDTO> crearProducto(@RequestBody ProductoRequestDTO productoRequest) {
+        try {
+            ProductoResponseDTO nuevoProducto = productoService.createProducto(productoRequest);
+            return new ResponseEntity<>(nuevoProducto, HttpStatus.CREATED);
+        } catch (Exception e) {
+            // Podrías devolver un mensaje de error más específico si quieres
+            return ResponseEntity.badRequest().body(null);
+        }
     }
 
     // Endpoint para actualizar un producto existente
     // PUT http://localhost:8080/api/productos/{id} (ej: /api/productos/1)
     // El cuerpo de la petición debe contener los datos actualizados del producto en formato JSON
     @PutMapping("/{id}")
-    public ResponseEntity<Producto> updateProducto(@PathVariable Long id, @RequestBody Producto producto) {
-        // Opcional: Podrías querer verificar si el producto con el ID existe antes de actualizar
-        Optional<Producto> existingProduct = productoService.getProductoById(id);
-        if (!existingProduct.isPresent()) {
-            return ResponseEntity.notFound().build(); // Retorna 404 si el producto no existe
+    public ResponseEntity<ProductoResponseDTO> actualizarProducto(@PathVariable Long id, @RequestBody ProductoRequestDTO productoRequest) {
+        try {
+            ProductoResponseDTO productoActualizado = productoService.updateProducto(id, productoRequest);
+            return ResponseEntity.ok(productoActualizado);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
         }
-
-        // Aseguramos que el ID del producto a actualizar sea el de la URL
-        producto.setId(id);
-        Producto updatedProducto = productoService.saveProducto(producto); // Llama al servicio para guardar (actualizar)
-        return ResponseEntity.ok(updatedProducto); // Retorna el producto actualizado con estado 200 OK
     }
 
     // Endpoint para eliminar un producto
@@ -76,14 +76,21 @@ public class ProductoController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProducto(@PathVariable Long id) {
         // Opcional: Podrías querer verificar si el producto existe antes de intentar eliminar
-        Optional<Producto> existingProduct = productoService.getProductoById(id);
+        Optional<ProductoResponseDTO> existingProduct = productoService.getProductoById(id);
         if (!existingProduct.isPresent()) {
             return ResponseEntity.notFound().build(); // Retorna 404 si el producto no existe
         }
 
-        productoService.deleteProductoById(id); // Llama al servicio para eliminar
+        productoService.deleteProducto(id); // Llama al servicio para eliminar
         // Retorna una respuesta vacía con estado HTTP 204 No Content (indicando éxito sin contenido en la respuesta)
         return ResponseEntity.noContent().build();
+    }
+
+    // Este método manejará peticiones como: GET http://localhost:8080/api/productos/categoria/1
+    @GetMapping("/categoria/{categoriaId}")
+    public ResponseEntity<List<ProductoResponseDTO>> getProductosPorCategoria(@PathVariable Long categoriaId) {
+        List<ProductoResponseDTO> productos = productoService.getProductosByCategoriaId(categoriaId);
+        return ResponseEntity.ok(productos); // Devuelve la lista de productos filtrados
     }
 
     // Puedes añadir otros endpoints relacionados con productos aquí (ej: buscar por nombre, por categoría)

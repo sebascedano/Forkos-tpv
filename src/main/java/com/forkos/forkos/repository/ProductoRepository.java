@@ -10,10 +10,20 @@ import java.util.Optional; // Importa Optional si defines métodos que puedan no
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
-    // Spring Data JPA proporciona automáticamente métodos CRUD básicos.
+    /**
+     * Spring Data JPA creará automáticamente una consulta para contar las filas
+     * donde el campo 'stock' sea menor o igual que el valor proporcionado.
+     *
+     * @param stockLevel El umbral del stock.
+     * @return El número de productos que cumplen la condición.
+     */
+    long countByStockLessThanEqual(Integer stockLevel);
 
-    // Puedes añadir métodos de búsqueda personalizados aquí, por ejemplo:
-    // Optional<Producto> findByNombre(String nombre); // Encontrar producto por nombre
-    // List<Producto> findByCategoriaId(Long categoriaId); // Encontrar productos por categoría
-    // List<Producto> findByActivoTrue(); // Encontrar solo productos activos
+    /**
+     * Encuentra todos los productos que pertenecen a una categoría específica.
+     *
+     * @param categoriaId El ID de la categoría.
+     * @return Una lista de productos que pertenecen a la categoría especificada.
+     */
+    List<Producto> findByCategoriaId(Long categoriaId);
 }

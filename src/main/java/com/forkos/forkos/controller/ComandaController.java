@@ -110,16 +110,6 @@ public class ComandaController {
         }
     }
 
-    // Hay un conflicto con este endpoint y el de arriba, ya que ambos responden a GET /api/comandas
-    // Lo comento por ahora, podrías moverlo a /all o similar si necesitas ambos.
-    /*
-    @GetMapping
-    public ResponseEntity<List<ComandaResponseDTO>> getAllComandas() {
-        List<ComandaResponseDTO> comandas = comandaService.getAllComandas();
-        return ResponseEntity.ok(comandas);
-    }
-    */
-
     @GetMapping("/open")
     public ResponseEntity<List<ComandaResponseDTO>> getComandasAbiertas() {
         List<ComandaResponseDTO> comandas = comandaService.getComandasAbiertas();

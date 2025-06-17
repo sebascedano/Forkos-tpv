@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors; // Para mapear listas
+
 
 @RestController
 @RequestMapping("/api/mesas")
@@ -67,7 +67,7 @@ public class MesaController {
     @PostMapping
     public ResponseEntity<MesaDTO> createMesa(@RequestBody MesaDTO mesaDTO) {
         Mesa mesa = convertToEntity(mesaDTO); // Convierte DTO a Entidad
-        // El estado por defecto "LIBRE" ya está en tu entidad Mesa
+        mesa.setEstado("LIBRE");
         Mesa savedMesa = mesaRepository.save(mesa);
         return ResponseEntity.status(HttpStatus.CREATED).body(convertToDto(savedMesa)); // Devuelve el DTO
     }
